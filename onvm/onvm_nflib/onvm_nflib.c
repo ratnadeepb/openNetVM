@@ -521,6 +521,23 @@ onvm_nflib_thread_main_loop(void *arg) {
                 if (callback != ONVM_NO_CALLBACK) {
                         keep_running = !(*callback)(nf->info) && keep_running;
                 }
+
+                /* 
+                 * Implementing auto-scaling
+                 * Attempt 1: NF will scale when dropped packet exceeds 100
+                 */
+
+                struct onvm_nf nf = nfs[info->instance_id];
+                void *data = info->data;
+
+                struct onvm_nf_scale_info *scale_info = onvm_nflib_inherit_parent_config(info, data);
+
+                if (nf.stats.rx_drop > 100) { /*  assume if rx_drop > 100 then NF overloaded */
+                        if ((onvm_nflib_scale(scale_info)) == 0)
+                                RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
+                        else
+                                rte_exit(EXIT_FAILURE, "Can't initialize the child\n");
+                }
         }
 
         /* Wait for children to quit */
