@@ -489,7 +489,7 @@ onvm_nflib_thread_main_loop(void *arg) {
         pkt_handler_func handler;
         callback_handler_func callback;
         int ret;
-        int scale_drop_threshold;
+        uint64_t scale_drop_threshold;
 
         nf = (struct onvm_nf *)arg;
         onvm_threading_core_affinitize(nf->info->core);
@@ -528,13 +528,13 @@ onvm_nflib_thread_main_loop(void *arg) {
                  * Attempt 1: NF will scale when dropped packet exceeds 100
                  */
 
-                nf = nfs[info->instance_id];
+                nf = &nfs[info->instance_id];
                 void *data = info->data;
                 scale_drop_threshold = 100;
 
                 struct onvm_nf_scale_info *scale_info = onvm_nflib_inherit_parent_config(info, data);
 
-                if (nf.stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
+                if (nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
                         scale_drop_threshold += scale_drop_threshold;
                         if ((onvm_nflib_scale(scale_info)) == 0)
                                 RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
