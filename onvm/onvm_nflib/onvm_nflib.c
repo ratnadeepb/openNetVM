@@ -529,10 +529,9 @@ onvm_nflib_thread_main_loop(void *arg) {
                  */
 
                 nf = &nfs[info->instance_id];
-                void *data = info->data;
                 scale_drop_threshold = 100;
 
-                struct onvm_nf_scale_info *scale_info = onvm_nflib_inherit_parent_config(info, data);
+                struct onvm_nf_scale_info *scale_info = onvm_nflib_inherit_parent_config(info, NULL);
 
                 if (nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
                         scale_drop_threshold += scale_drop_threshold;
