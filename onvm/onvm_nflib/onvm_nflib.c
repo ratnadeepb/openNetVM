@@ -223,7 +223,7 @@ onvm_nflib_start_nf(struct onvm_nf_info *nf_info);
  * Check if there are dropped packets on the NF
  * If dropped packets exceed a threshold then attempt to auto-scale
  *
- * Input: nf struct corresponding to the NF, any data pointer
+ * Input: nf struct corresponding to the NF, nf scale info struct
  */
 int onvm_nflib_auto_scale(struct onvm_nf *nf, struct onvm_nf_scale_info *scale_info);
 
