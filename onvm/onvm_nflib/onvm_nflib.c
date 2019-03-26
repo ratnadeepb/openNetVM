@@ -107,6 +107,8 @@ static uint8_t keep_running = 1;
 // Shared data for default service chain
 struct onvm_service_chain *default_chain;
 
+// initial threshold to trigger auto scaling of NF
+uint64_t scale_drop_threshold = 100;
 /***********************Internal Functions Prototypes*************************/
 
 
@@ -216,6 +218,14 @@ onvm_nflib_lookup_shared_structs(void);
  */
 static int
 onvm_nflib_start_nf(struct onvm_nf_info *nf_info);
+
+/* 
+ * Check if there are dropped packets on the NF
+ * If dropped packets exceed a threshold then attempt to auto-scale
+ *
+ * Input: nf struct corresponding to the NF, any data pointer
+ */
+int onvm_nflib_auto_scale(struct onvm_nf *nf, struct onvm_nf_scale_info *scale_info);
 
 /*
  * Entry point of the NF main loop
@@ -480,16 +490,38 @@ onvm_nflib_run_callback(
         return 0;
 }
 
+int
+onvm_nflib_auto_scale(struct onvm_nf *nf, struct onvm_nf_scale_info *scale_info)
+        
+{
+        /* 
+         * Implementing auto-scaling
+         * Attempt 1: NF will scale when dropped packet exceeds 100
+         */
+
+        if (nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
+                scale_drop_threshold += scale_drop_threshold;
+                if ((onvm_nflib_scale(scale_info)) == 0) {
+                        RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
+                } else {
+                        //rte_exit(EXIT_FAILURE, "Can't initialize the child\n");
+                        return -1;
+                }
+        }
+
+        return 0;
+}
+
 void *
 onvm_nflib_thread_main_loop(void *arg) {
         struct rte_mbuf *pkts[PACKET_READ_SIZE];
-        struct onvm_nf * nf;
+        struct onvm_nf *nf;
+        struct onvm_nf_scale_info *scale_info;
         uint16_t nb_pkts_added, i;
         struct onvm_nf_info* info;
         pkt_handler_func handler;
         callback_handler_func callback;
         int ret;
-        uint64_t scale_drop_threshold;
 
         nf = (struct onvm_nf *)arg;
         onvm_threading_core_affinitize(nf->info->core);
@@ -507,6 +539,8 @@ onvm_nflib_thread_main_loop(void *arg) {
         if (ret != 0) rte_exit(EXIT_FAILURE, "Unable to message manager\n");
 
         printf("[Press Ctrl-C to quit ...]\n");
+
+        scale_info = onvm_nflib_inherit_parent_config(info, NULL); // to used by the onvm_nflib_auto_scale function
         for (; keep_running;) {
                 nb_pkts_added = onvm_nflib_dequeue_packets((void **) pkts, nf, handler);
 
@@ -523,22 +557,10 @@ onvm_nflib_thread_main_loop(void *arg) {
                         keep_running = !(*callback)(nf->info) && keep_running;
                 }
 
-                /* 
-                 * Implementing auto-scaling
-                 * Attempt 1: NF will scale when dropped packet exceeds 100
-                 */
-
-                nf = &nfs[info->instance_id];
-                scale_drop_threshold = 100;
-
-                struct onvm_nf_scale_info *scale_info = onvm_nflib_inherit_parent_config(info, NULL);
-
-                if (nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
-                        scale_drop_threshold += scale_drop_threshold;
-                        if ((onvm_nflib_scale(scale_info)) == 0)
-                                RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
-                        else
-                                rte_exit(EXIT_FAILURE, "Can't initialize the child\n");
+                /* auto scale if required */
+                if ((onvm_nflib_auto_scale(&nfs[info->instance_id], scale_info)) == -1) {
+                        printf("Failed to scale\n");
+                        //keep_running = 0;
                 }
         }
 
@@ -550,6 +572,7 @@ onvm_nflib_thread_main_loop(void *arg) {
 
         /* Stop and free */
         onvm_nflib_cleanup(info);
+        free(scale_info);
 
         return NULL;
 }
