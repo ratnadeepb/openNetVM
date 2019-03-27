@@ -549,6 +549,7 @@ onvm_nflib_thread_main_loop(void *arg) {
         printf("[Press Ctrl-C to quit ...]\n");
 
         scale_info = onvm_nflib_inherit_parent_config(info, NULL); // to used by the onvm_nflib_auto_scale function
+        scale_info->pkt_func = handler;
         for (; keep_running;) {
                 nb_pkts_added = onvm_nflib_dequeue_packets((void **) pkts, nf, handler);
 
