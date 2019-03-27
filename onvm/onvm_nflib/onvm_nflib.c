@@ -500,11 +500,11 @@ onvm_nflib_auto_scale(struct onvm_nf *nf, struct onvm_nf_scale_info *scale_info)
          */
 
         if (nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
-                scale_drop_threshold += scale_drop_threshold;
+                scale_drop_threshold += scale_drop_threshold; /* since rx_drop is cumulative */
                 if ((onvm_nflib_scale(scale_info)) == 0) {
                         RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
                 } else {
-                        //rte_exit(EXIT_FAILURE, "Can't initialize the child\n");
+                        RTE_LOG(INFO, APP, "Can't initialize the child\n", scale_info->service_id);
                         return -1;
                 }
         }
@@ -560,7 +560,7 @@ onvm_nflib_thread_main_loop(void *arg) {
                 /* auto scale if required */
                 if ((onvm_nflib_auto_scale(&nfs[info->instance_id], scale_info)) == -1) {
                         printf("Failed to scale\n");
-                        //keep_running = 0;
+                        keep_running = 0; /* kill the NF */
                 }
         }
 
