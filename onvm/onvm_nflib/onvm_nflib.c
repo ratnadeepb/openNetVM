@@ -504,7 +504,7 @@ onvm_nflib_auto_scale(struct onvm_nf *nf, struct onvm_nf_scale_info *scale_info)
                 if ((onvm_nflib_scale(scale_info)) == 0) {
                         RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
                 } else {
-                        RTE_LOG(INFO, APP, "Can't initialize the child\n", scale_info->service_id);
+                        RTE_LOG(INFO, APP, "Can't initialize the child\n");
                         return -1;
                 }
         }
