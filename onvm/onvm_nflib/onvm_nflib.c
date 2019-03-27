@@ -109,6 +109,9 @@ struct onvm_service_chain *default_chain;
 
 // initial threshold to trigger auto scaling of NF
 uint64_t scale_drop_threshold = 100;
+
+// restrict number of child NFs being spawned
+int num_child_nfs = 0;
 /***********************Internal Functions Prototypes*************************/
 
 
@@ -499,10 +502,11 @@ onvm_nflib_auto_scale(struct onvm_nf *nf, struct onvm_nf_scale_info *scale_info)
          * Attempt 1: NF will scale when dropped packet exceeds 100
          */
 
-        if (nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
+        if (num_child_nfs < 2 && nf->stats.rx_drop > scale_drop_threshold) { /*  assume if rx_drop > 100 then NF overloaded */
                 scale_drop_threshold += scale_drop_threshold; /* since rx_drop is cumulative */
                 if ((onvm_nflib_scale(scale_info)) == 0) {
                         RTE_LOG(INFO, APP, "Spawning child SID %u\n", scale_info->service_id);
+                        num_child_nfs++;
                 } else {
                         RTE_LOG(INFO, APP, "Can't initialize the child\n");
                         return -1;
