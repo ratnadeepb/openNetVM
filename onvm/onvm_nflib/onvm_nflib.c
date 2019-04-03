@@ -569,7 +569,6 @@ onvm_nflib_thread_main_loop(void *arg) {
                 /* auto scale if required */
                 if ((onvm_nflib_auto_scale(&nfs[info->instance_id], scale_info)) == -1) {
                         printf("Failed to scale\n");
-                        keep_running = 0; /* kill the NF */
                 }
         }
 
